@@ -1,25 +1,15 @@
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-
-dotenv.config({ path: path.join(__dirname, ".env") });
-
-console.log("===== ENV CHECK =====");
-console.log("EMAIL_USER =", process.env.EMAIL_USER);
-console.log("EMAIL_PASS exists =", !!process.env.EMAIL_PASS);
-console.log("PORT =", process.env.PORT);
-console.log("ENV PATH =", path.join(__dirname, ".env"));
-console.log("=====================");
-
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import session from "express-session";
+import dotenv from "dotenv";
+
+// ✅ Load .env ONLY locally (Render provides env vars)
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
+
 import userModel from "./models/userModel.js";
 import taxiDriverModel from "./models/taxiDriverModel.js";
 import tripModel from "./models/tripModel.js";
@@ -29,37 +19,57 @@ import adminModel from "./models/adminModel.js";
 import authRoutes from "./routes/authRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
-const TravelBuddy_App = express();
-TravelBuddy_App.use(express.json());
-TravelBuddy_App.use(cors());
+const app = express();
 
-TravelBuddy_App.use(
+// ✅ CORS (you can restrict later)
+app.use(cors());
+app.use(express.json());
+
+// ✅ Session (works, but MemoryStore warning is normal)
+app.use(
   session({
     secret: process.env.SESSION_SECRET || "a-very-strong-secret-key",
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false },
+    cookie: {
+      secure: false, // set true only if you use HTTPS + trust proxy
+      sameSite: "lax"
+    }
   })
 );
 
-TravelBuddy_App.use(authRoutes);
-TravelBuddy_App.use(paymentRoutes);
+app.use(authRoutes);
+app.use(paymentRoutes);
 
-try {
-  const conn = `mongodb+srv://${process.env.MONGODB_USERID}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}/${process.env.MONGODB_DATABASE}`;
-  await mongoose.connect(conn);
-  console.log("Database Connection Success !");
-} catch (err) {
-  console.error("Database Connection Failed:", err);
+// ✅ Mongo connection: use ONE env var on Render
+// In Render add: MONGODB_URI = mongodb+srv://USER:PASS@cluster.xxxx.mongodb.net/dbname?retryWrites=true&w=majority
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGO_URI ||
+  process.env.DATABASE_URL;
+
+if (!MONGODB_URI) {
+  console.error("❌ Missing MongoDB connection string. Set MONGODB_URI in Render.");
   process.exit(1);
 }
 
-const PORT = process.env.PORT || 7500;
-TravelBuddy_App.listen(PORT, () => {
-  console.log(`Travel Buddy Server running at port ${PORT} ...!`);
+try {
+  await mongoose.connect(MONGODB_URI);
+  console.log("✅ Database Connection Success!");
+} catch (err) {
+  console.error("❌ Database Connection Failed:", err);
+  process.exit(1);
+}
+
+// ✅ IMPORTANT: bind to Render PORT
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✅ Travel Buddy Server running on port ${PORT}`);
 });
 
-TravelBuddy_App.post("/userRegister", async (req, res) => {
+// -------------------- ROUTES --------------------
+
+app.post("/userRegister", async (req, res) => {
   try {
     const exist = await userModel.findOne({ userEmail: req.body.email });
     if (exist) return res.json({ serverMsg: "User already exist !", flag: false });
@@ -81,7 +91,7 @@ TravelBuddy_App.post("/userRegister", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/userLogin", async (req, res) => {
+app.post("/userLogin", async (req, res) => {
   try {
     const user = await userModel.findOne({ userEmail: req.body.userEmail });
     if (!user) return res.json({ serverMsg: "User not found !", loginStatus: false });
@@ -95,7 +105,7 @@ TravelBuddy_App.post("/userLogin", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/driverRegister", async (req, res) => {
+app.post("/driverRegister", async (req, res) => {
   try {
     const exist = await taxiDriverModel.findOne({ driverEmail: req.body.driverEmail });
     if (exist) return res.json({ serverMsg: "Driver already exists !", flag: false });
@@ -115,7 +125,7 @@ TravelBuddy_App.post("/driverRegister", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/driverLogin", async (req, res) => {
+app.post("/driverLogin", async (req, res) => {
   try {
     const driver = await taxiDriverModel.findOne({ driverEmail: req.body.driverEmail });
     if (!driver) return res.json({ serverMsg: "Driver not found !", loginStatus: false });
@@ -129,7 +139,7 @@ TravelBuddy_App.post("/driverLogin", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/adminLogin", async (req, res) => {
+app.post("/adminLogin", async (req, res) => {
   try {
     const admin = await adminModel.findOne({ adminEmail: req.body.adminEmail });
     if (!admin) return res.json({ serverMsg: "Admin not found !", loginStatus: false });
@@ -143,7 +153,7 @@ TravelBuddy_App.post("/adminLogin", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/createTrip", async (req, res) => {
+app.post("/createTrip", async (req, res) => {
   try {
     await tripModel.create({
       ownerEmail: req.body.ownerEmail,
@@ -161,7 +171,7 @@ TravelBuddy_App.post("/createTrip", async (req, res) => {
   }
 });
 
-TravelBuddy_App.get("/searchTrips", async (req, res) => {
+app.get("/searchTrips", async (req, res) => {
   try {
     const q = {};
     if (req.query.fromLocation) q.fromLocation = req.query.fromLocation;
@@ -176,7 +186,7 @@ TravelBuddy_App.get("/searchTrips", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/confirmBooking", async (req, res) => {
+app.post("/confirmBooking", async (req, res) => {
   try {
     const trip = await tripModel.findById(req.body.tripId);
     if (!trip) return res.status(404).json({ serverMsg: "Trip not found" });
@@ -195,7 +205,7 @@ TravelBuddy_App.post("/confirmBooking", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/processPayment", (req, res) => {
+app.post("/processPayment", (req, res) => {
   res.json({
     serverMsg: "Payment successful",
     paymentStatus: true,
@@ -208,7 +218,7 @@ TravelBuddy_App.post("/processPayment", (req, res) => {
   });
 });
 
-TravelBuddy_App.post("/sendFeedback", async (req, res) => {
+app.post("/sendFeedback", async (req, res) => {
   try {
     await feedbackModel.create({
       userEmail: req.body.userEmail,
@@ -221,13 +231,13 @@ TravelBuddy_App.post("/sendFeedback", async (req, res) => {
   }
 });
 
-TravelBuddy_App.post("/logout", (req, res) => {
+app.post("/logout", (req, res) => {
   req.session.destroy(() => {
     res.clearCookie("connect.sid");
     res.json({ serverMsg: "Logged out successfully" });
   });
 });
 
-TravelBuddy_App.get("/", (req, res) => {
+app.get("/", (req, res) => {
   res.send("Travel Buddy API is running.");
 });
