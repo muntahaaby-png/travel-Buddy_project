@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const MONGODB_URI =mongodb+srv://admin:admin123@cluster0.xg9lokz.mongodb.net/?appName=Cluster0;
+const MONGODB_URI ="mongodb+srv://admin:admin123@cluster0.xg9lokz.mongodb.net/?appName=Cluster0";
 
 if (!MONGODB_URI) {
   console.error("❌ Missing MONGODB_URI in Render Environment Variables");
