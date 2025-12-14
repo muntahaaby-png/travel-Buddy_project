@@ -5,7 +5,6 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import dotenv from "dotenv";
 
-// ✅ Load .env ONLY locally (Render provides env vars)
 if (process.env.NODE_ENV !== "production") {
   dotenv.config();
 }
@@ -19,14 +18,12 @@ import adminModel from "./models/adminModel.js";
 import authRoutes from "./routes/authRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
-const app = express();
+const TravelBuddy_App = express();
 
-// ✅ CORS (you can restrict later)
-app.use(cors());
-app.use(express.json());
+TravelBuddy_App.use(cors());
+TravelBuddy_App.use(express.json());
 
-// ✅ Session (works, but MemoryStore warning is normal)
-app.use(
+TravelBuddy_App.use(
   session({
     secret: process.env.SESSION_SECRET || "a-very-strong-secret-key",
     resave: false,
@@ -38,11 +35,9 @@ app.use(
   })
 );
 
-app.use(authRoutes);
-app.use(paymentRoutes);
+TravelBuddy_App.use(authRoutes);
+TravelBuddy_App.use(paymentRoutes);
 
-// ✅ Mongo connection: use ONE env var on Render
-// In Render add: MONGODB_URI = mongodb+srv://USER:PASS@cluster.xxxx.mongodb.net/dbname?retryWrites=true&w=majority
 const MONGODB_URI =
   process.env.MONGODB_URI ||
   process.env.MONGO_URI ||
@@ -61,15 +56,13 @@ try {
   process.exit(1);
 }
 
-// ✅ IMPORTANT: bind to Render PORT
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+TravelBuddy_App.listen(PORT, () => {
   console.log(`✅ Travel Buddy Server running on port ${PORT}`);
 });
 
-// -------------------- ROUTES --------------------
 
-app.post("/userRegister", async (req, res) => {
+TravelBuddy_App.post("/userRegister", async (req, res) => {
   try {
     const exist = await userModel.findOne({ userEmail: req.body.email });
     if (exist) return res.json({ serverMsg: "User already exist !", flag: false });
@@ -91,7 +84,7 @@ app.post("/userRegister", async (req, res) => {
   }
 });
 
-app.post("/userLogin", async (req, res) => {
+TravelBuddy_App.post("/userLogin", async (req, res) => {
   try {
     const user = await userModel.findOne({ userEmail: req.body.userEmail });
     if (!user) return res.json({ serverMsg: "User not found !", loginStatus: false });
@@ -105,7 +98,7 @@ app.post("/userLogin", async (req, res) => {
   }
 });
 
-app.post("/driverRegister", async (req, res) => {
+TravelBuddy_App.post("/driverRegister", async (req, res) => {
   try {
     const exist = await taxiDriverModel.findOne({ driverEmail: req.body.driverEmail });
     if (exist) return res.json({ serverMsg: "Driver already exists !", flag: false });
@@ -125,7 +118,7 @@ app.post("/driverRegister", async (req, res) => {
   }
 });
 
-app.post("/driverLogin", async (req, res) => {
+TravelBuddy_App.post("/driverLogin", async (req, res) => {
   try {
     const driver = await taxiDriverModel.findOne({ driverEmail: req.body.driverEmail });
     if (!driver) return res.json({ serverMsg: "Driver not found !", loginStatus: false });
@@ -139,7 +132,7 @@ app.post("/driverLogin", async (req, res) => {
   }
 });
 
-app.post("/adminLogin", async (req, res) => {
+TravelBuddy_App.post("/adminLogin", async (req, res) => {
   try {
     const admin = await adminModel.findOne({ adminEmail: req.body.adminEmail });
     if (!admin) return res.json({ serverMsg: "Admin not found !", loginStatus: false });
@@ -153,7 +146,7 @@ app.post("/adminLogin", async (req, res) => {
   }
 });
 
-app.post("/createTrip", async (req, res) => {
+TravelBuddy_App.post("/createTrip", async (req, res) => {
   try {
     await tripModel.create({
       ownerEmail: req.body.ownerEmail,
@@ -171,7 +164,7 @@ app.post("/createTrip", async (req, res) => {
   }
 });
 
-app.get("/searchTrips", async (req, res) => {
+TravelBuddy_App.get("/searchTrips", async (req, res) => {
   try {
     const q = {};
     if (req.query.fromLocation) q.fromLocation = req.query.fromLocation;
@@ -186,7 +179,7 @@ app.get("/searchTrips", async (req, res) => {
   }
 });
 
-app.post("/confirmBooking", async (req, res) => {
+TravelBuddy_App.post("/confirmBooking", async (req, res) => {
   try {
     const trip = await tripModel.findById(req.body.tripId);
     if (!trip) return res.status(404).json({ serverMsg: "Trip not found" });
@@ -205,7 +198,7 @@ app.post("/confirmBooking", async (req, res) => {
   }
 });
 
-app.post("/processPayment", (req, res) => {
+TravelBuddy_App.post("/processPayment", (req, res) => {
   res.json({
     serverMsg: "Payment successful",
     paymentStatus: true,
@@ -218,7 +211,7 @@ app.post("/processPayment", (req, res) => {
   });
 });
 
-app.post("/sendFeedback", async (req, res) => {
+TravelBuddy_App.post("/sendFeedback", async (req, res) => {
   try {
     await feedbackModel.create({
       userEmail: req.body.userEmail,
@@ -231,13 +224,13 @@ app.post("/sendFeedback", async (req, res) => {
   }
 });
 
-app.post("/logout", (req, res) => {
+TravelBuddy_App.post("/logout", (req, res) => {
   req.session.destroy(() => {
     res.clearCookie("connect.sid");
     res.json({ serverMsg: "Logged out successfully" });
   });
 });
 
-app.get("/", (req, res) => {
+TravelBuddy_App.get("/", (req, res) => {
   res.send("Travel Buddy API is running.");
 });
