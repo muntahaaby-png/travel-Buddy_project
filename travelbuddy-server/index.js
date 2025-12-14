@@ -5,6 +5,16 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error("❌ Missing MONGODB_URI in Render Environment Variables");
+  process.exit(1);
+}
+
+await mongoose.connect(MONGODB_URI);
+console.log("✅ Database Connection Success!");
+
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 console.log("===== ENV CHECK =====");
