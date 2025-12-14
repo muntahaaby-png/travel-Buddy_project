@@ -12,7 +12,7 @@
     "moment": "^2.30.1",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "react-test-renderer": "^19.2.1",
+    "react-test-renderer": "^19.2.3",
     "react-hook-form": "^7.65.0",
     "react-icons": "^5.5.0",
     "react-redux": "^9.2.0",
@@ -22,11 +22,13 @@
     "web-vitals": "^2.1.4",
     "yup": "^1.7.1"
   },
-  "scripts": {
+    "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test": "react-scripts test --env=jsdom",
+    "test:watch": "react-scripts test --env=jsdom --watch",
+    "eject": "react-scripts eject",
+  
   },
   "eslintConfig": {
     "extends": [
